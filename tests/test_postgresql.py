@@ -17,18 +17,22 @@ def test_docker_run_postgresql_scram(version):
 
 
 def _docker_run_postgresql_test(version, method):
+    test_user = 'bob' + method[:3]
     with PostgresContainer(
         image=f'postgres:{version}',
+        user=test_user,
+        password='hi bob',
         initdb_args=f'--auth-host={method}',
         host_auth_method=f'{method}'
     ).with_bind_ports(5432, 45432) as postgres:
         engine = sqlalchemy.create_engine(postgres.get_connection_url())
         with engine.connect() as conn:
-            test_query = "SELECT rolname, rolpassword FROM pg_authid WHERE rolname = 'test';"
+            test_query = "SELECT rolname, rolpassword FROM pg_authid "\
+                         f" WHERE rolname = '{test_user}';"
             result = conn.execute(test_query)
             name, password = result.fetchone()
 
-            assert name == 'test'
+            assert name == test_user
 
             # password_method = str(password[:len(method)])
             # password_method = password_method.lower()
